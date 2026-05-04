@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delay Prediction Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="animated-bg"></div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+
+<div class="navbar">
+    <div class="navbar-brand">
+        <span>✈</span>
+        <h1>Flight Delay Predictor</h1>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        {% if session.get('user') %}
+        <a href="/profile" style="background:linear-gradient(135deg,#2980b9,#1abc9c);color:white;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">
+            👤 My Profile
+        </a>
+        {% else %}
+        <a href="/login-page" style="background:linear-gradient(135deg,#2980b9,#1abc9c);color:white;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">
+            🔑 Sign In
+        </a>
+        {% endif %}
+        <!-- <span class="navbar-tag">{{ accuracy }}% Accurate AI</span> -->
+    </div>
+</div>
+
+<div class="container">
+
+    <div class="result-header">
+        <h2>Airflight Prediction & Recommendation</h2>
+        <p>{{ airline }} &nbsp;|&nbsp; {{ origin }} → {{ dest }}</p>
+    </div>
+
+    <!-- Verdict -->
+    <div class="verdict-card {{ color }}">
+        <h1>{{ verdict }}</h1>
+        <h2>Delay Risk: {{ probability }}%</h2>
+        <p>{{ advice }}</p>
+    </div>
+
+    <div class="result-grid">
+
+        <!-- Risk Meter -->
+        <div class="result-card">
+            <h3>Delay Risk Meter</h3>
+            <div class="meter-bar">
+                <div class="meter-fill" style="width: {{ probability }}%;
+                    background: {% if probability >= 70 %}#e74c3c
+                                {% elif probability >= 40 %}#f39c12
+                                {% else %}#27ae60{% endif %};">
+                </div>
+            </div>
+            <div class="meter-labels">
+                <span>0%</span>
+                <span>Low</span>
+                <span>Medium</span>
+                <span>High</span>
+                <span>100%</span>
+            </div>
+        </div>
+
+        <!-- Delay Causes -->
+        <div class="result-card">
+            <h3>Average Delay Causes (minutes)</h3>
+            <div class="causes-grid">
+                {% for cause, value in causes.items() %}
+                <div class="cause-item">
+                    <div class="cause-bar-wrap">
+                        <div class="cause-bar"
+                             style="height: {{ [value * 3, 100] | min }}px;">
+                        </div>
+                    </div>
+                    <p class="cause-name">{{ cause }}</p>
+                    <p class="cause-val">{{ value }}m</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Suggestions -->
+    <div class="suggestions-card">
+        <h3>Delay Reduction Suggestions for Traveller</h3>
+        <div class="suggestions-grid">
+
+            {% if probability >= 70 %}
+            <div class="suggestion red">
+                <h4>Reschedule if Possible</h4>
+                <p>High delay risk detected. Consider flying a day earlier or choosing a morning flight.</p>
+            </div>
+            <div class="suggestion red">
+                <h4>Choose Different Airline</h4>
+                <p>Some airlines have significantly lower delay rates on this route.</p>
+            </div>
+            <div class="suggestion orange">
+                <h4>Reach Airport Early</h4>
+                <p>Give yourself extra buffer time in case of gate changes or boarding delays.</p>
+            </div>
+            <div class="suggestion orange">
+                <h4>Check Weather Forecast</h4>
+                <p>Weather is a major delay cause. Check forecast for origin and destination cities.</p>
+            </div>
+
+            {% elif probability >= 40 %}
+            <div class="suggestion orange">
+                <h4>Reach Airport Early</h4>
+                <p>Moderate delay risk. Arrive at least 2 hours before departure.</p>
+            </div>
+            <div class="suggestion orange">
+                <h4>Track Flight Status</h4>
+                <p>Use FlightAware or your airline app to track real-time flight status.</p>
+            </div>
+            <div class="suggestion green">
+                <h4>Morning Flights are Safer</h4>
+                <p>Early morning flights have significantly lower delay rates than evening flights.</p>
+            </div>
+
+            {% else %}
+            <div class="suggestion green">
+                <h4>Good to Travel!</h4>
+                <p>Low delay risk detected. This is a great time to fly on this route.</p>
+            </div>
+            <div class="suggestion green">
+                <h4>Standard Precautions</h4>
+                <p>Still reach airport on time and keep an eye on weather updates.</p>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <div style="text-align:center; margin: 20px 0 10px;">
+        <a href="/recommend?origin={{ origin }}&dest={{ dest }}&month={{ month | default(1) }}&day={{ day | default(0) }}&current_prob={{ probability }}"
+           class="back-btn">
+            ✈ Find Better Flights on This Route
+        </a>
+    </div>
+
+    <div style="text-align:center; margin: 20px 0 30px;">
+        <a href="/" class="back-btn">← Search Another Flight</a>
+    </div>
+
+</div>
+
+<footer>
+    <p>Flight Delay Analysis Project | Data Source: US Bureau of Transportation Statistics</p>
+</footer>
+
+</body>
+</html>

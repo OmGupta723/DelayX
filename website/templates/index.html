@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Delay Predictor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+    /* ===== Calendar Popup ===== */
+    .calendar-wrapper {
+        position: relative;
+        width: 100%;
+    }
+
+    .calendar-input-btn {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1.5px solid #334155;
+        background: #0f172a;
+        color: #e2e8f0;
+        font-size: 1rem;
+        cursor: pointer;
+        text-align: left;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .calendar-input-btn:hover {
+        border-color: #3b82f6;
+    }
+
+    .calendar-popup {
+        display: none;
+        position: absolute;
+        top: 110%;
+        left: 0;
+        z-index: 999;
+        background: #1e293b;
+        border: 1.5px solid #334155;
+        border-radius: 14px;
+        padding: 16px;
+        width: 300px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+
+    .calendar-popup.open {
+        display: block;
+    }
+
+    .cal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .cal-header button {
+        background: #334155;
+        border: none;
+        color: #e2e8f0;
+        border-radius: 8px;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .cal-header button:hover {
+        background: #3b82f6;
+    }
+
+    .cal-month-year {
+        color: #e2e8f0;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .cal-days-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        color: #64748b;
+        font-size: 0.75rem;
+        margin-bottom: 6px;
+    }
+
+    .cal-days-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+    }
+
+    .cal-day {
+        text-align: center;
+        padding: 6px 0;
+        border-radius: 8px;
+        cursor: pointer;
+        color: #e2e8f0;
+        font-size: 0.85rem;
+    }
+
+    .cal-day:hover {
+        background: #3b82f6;
+        color: #fff;
+    }
+
+    .cal-day.empty {
+        cursor: default;
+    }
+
+    .cal-day.today {
+        border: 1.5px solid #3b82f6;
+        color: #3b82f6;
+        font-weight: 600;
+    }
+
+    .cal-day.selected {
+        background: #3b82f6;
+        color: #fff;
+        font-weight: 700;
+    }
+
+    .cal-day.past {
+        color: #475569;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    </style>
+
+</head>
+<body>
+
+<div class="animated-bg"></div>
+
+<!-- Stars -->
+<div class="stars" id="stars"></div>
+
+<!-- Flying planes -->
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loader">
+    <div class="loading-plane">✈</div>
+    <div class="loader"></div>
+    <div class="loading-steps">
+        <h3>Analysing your flight...</h3>
+        <p>Our AI is predicting delay risk</p>
+        <div class="loading-dots">
+            <span></span><span></span><span></span>
+        </div>
+    </div>
+</div>
+
+<!-- Navbar -->
+<div class="navbar">
+    <div class="navbar-brand">
+        <span>✈</span>
+        <h1>Flight Delay Predictor</h1>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+        {% if session.get('user') %}
+        <a href="/profile" style="background:linear-gradient(135deg,#2980b9,#1abc9c);color:white;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">
+            👤 My Profile
+        </a>
+        {% else %}
+        <a href="/login-page" style="background:linear-gradient(135deg,#2980b9,#1abc9c);color:white;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;">
+            🔑 Sign In
+        </a>
+        {% endif %}
+        <<!-- <span class="navbar-tag">{{ accuracy }}% Accurate AI</span> -->
+    </div>
+</div>
+
+<div class="container">
+
+    <div class="hero">
+        <h2>Smart Flight Delay Predictor</h2>
+        <p>Enter your flight details — our AI predicts delay risk in seconds</p>
+    </div>
+
+    <div class="form-card">
+        <div class="form-card-title">
+            <span>✈</span>
+            <h3>Enter Your Flight Details</h3>
+        </div>
+
+        <form action="/predict" method="POST" onsubmit="return prepareAndSubmit()">
+            <div class="form-grid">
+
+                <div class="form-group">
+                    <label>
+                        <span class="icon">🏢</span> Airline
+                    </label>
+                    <select name="airline" required>
+    <option value="">-- Select Airline --</option>
+    <option value="9E">Endeavor Air</option>
+    <option value="AA">American Airlines</option>
+    <option value="AS">Alaska Airlines</option>
+    <option value="B6">JetBlue Airways</option>
+    <option value="DL">Delta Air Lines</option>
+    <option value="EV">ExpressJet Airlines</option>
+    <option value="F9">Frontier Airlines</option>
+    <option value="G4">Allegiant Air</option>
+    <option value="HA">Hawaiian Airlines</option>
+    <option value="MQ">Envoy Air</option>
+    <option value="NK">Spirit Airlines</option>
+    <option value="OH">PSA Airlines</option>
+    <option value="OO">SkyWest Airlines</option>
+    <option value="QX">Horizon Air</option>
+    <option value="UA">United Airlines</option>
+    <option value="WN">Southwest Airlines</option>
+</select>
+                    <div class="input-hint">Choose your flight operator</div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <span class="icon">🛫</span> From (Origin Airport)
+                    </label>
+                    <select name="origin" required>
+    <option value="">-- Select Origin --</option>
+    <option value="ABE">ABE – Lehigh Valley International</option>
+    <option value="ABI">ABI – Abilene Regional</option>
+    <option value="ABQ">ABQ – Albuquerque International Sunport</option>
+    <option value="ABR">ABR – Aberdeen Regional</option>
+    <option value="ABY">ABY – Southwest Georgia Regional</option>
+    <option value="ACK">ACK – Nantucket Memorial</option>
+    <option value="ACT">ACT – Waco Regional</option>
+    <option value="ACV">ACV – California Redwood Coast-Humboldt County</option>
+    <option value="ACY">ACY – Atlantic City International</option>
+    <option value="ADK">ADK – Adak Airport</option>
+    <option value="ADQ">ADQ – Kodiak Airport</option>
+    <option value="AEX">AEX – Alexandria International</option>
+    <option value="AGS">AGS – Augusta Regional</option>
+    <option value="AKN">AKN – King Salmon Airport</option>
+    <option value="ALB">ALB – Albany International</option>
+    <option value="ALO">ALO – Waterloo Regional</option>
+    <option value="ALS">ALS – San Luis Valley Regional</option>
+    <option value="ALW">ALW – Walla Walla Regional</option>
+    <option value="AMA">AMA – Rick Husband Amarillo International</option>
+    <option value="ANC">ANC – Ted Stevens Anchorage International</option>
+    <option value="APN">APN – Alpena County Regional</option>
+    <option value="ART">ART – Watertown International</option>
+    <option value="ASE">ASE – Aspen/Pitkin County</option>
+    <option value="ATL">ATL – Hartsfield-Jackson Atlanta International</option>
+    <option value="ATW">ATW – Appleton International</option>
+    <option value="ATY">ATY – Watertown Regional</option>
+    <option value="AUS">AUS – Austin-Bergstrom International</option>
+    <option value="AVL">AVL – Asheville Regional</option>
+    <option value="AVP">AVP – Wilkes-Barre/Scranton International</option>
+    <option value="AZA">AZA – Phoenix-Mesa Gateway</option>
+    <option value="AZO">AZO – Kalamazoo/Battle Creek International</option>
+    <option value="BDL">BDL – Bradley International</option>
+    <option value="BET">BET – Bethel Airport</option>
+    <option value="BFF">BFF – Western Nebraska Regional</option>
+    <option value="BFL">BFL – Meadows Field Bakersfield</option>
+    <option value="BFM">BFM – Mobile Downtown Airport</option>
+    <option value="BGM">BGM – Greater Binghamton/Edwin A. Link Field</option>
+    <option value="BGR">BGR – Bangor International</option>
+    <option value="BHM">BHM – Birmingham-Shuttlesworth International</option>
+    <option value="BIH">BIH – Eastern Sierra Regional</option>
+    <option value="BIL">BIL – Billings Logan International</option>
+    <option value="BIS">BIS – Bismarck Municipal</option>
+    <option value="BJI">BJI – Bemidji Regional</option>
+    <option value="BKG">BKG – Branson Airport</option>
+    <option value="BLI">BLI – Bellingham International</option>
+    <option value="BLV">BLV – MidAmerica St. Louis Airport</option>
+    <option value="BMI">BMI – Central Illinois Regional</option>
+    <option value="BNA">BNA – Nashville International</option>
+    <option value="BOI">BOI – Boise Airport</option>
+    <option value="BOS">BOS – Logan International</option>
+    <option value="BPT">BPT – Jack Brooks Regional</option>
+    <option value="BQK">BQK – Brunswick Golden Isles Airport</option>
+    <option value="BQN">BQN – Rafael Hernández Airport</option>
+    <option value="BRD">BRD – Brainerd Lakes Regional</option>
+    <option value="BRO">BRO – Brownsville/South Padre Island International</option>
+    <option value="BRW">BRW – Wiley Post-Will Rogers Memorial</option>
+    <option value="BTM">BTM – Bert Mooney Airport</option>
+    <option value="BTR">BTR – Baton Rouge Metropolitan</option>
+    <option value="BTV">BTV – Burlington International</option>
+    <option value="BUF">BUF – Buffalo Niagara International</option>
+    <option value="BUR">BUR – Hollywood Burbank Airport</option>
+    <option value="BWI">BWI – Baltimore/Washington International</option>
+    <option value="BZN">BZN – Bozeman Yellowstone International</option>
+    <option value="CAE">CAE – Columbia Metropolitan</option>
+    <option value="CAK">CAK – Akron-Canton Airport</option>
+    <option value="CDB">CDB – Cold Bay Airport</option>
+    <option value="CDC">CDC – Cedar City Regional</option>
+    <option value="CDV">CDV – Merle K. (Mudhole) Smith Airport</option>
+    <option value="CGI">CGI – Cape Girardeau Regional</option>
+    <option value="CHA">CHA – Chattanooga Metropolitan</option>
+    <option value="CHO">CHO – Charlottesville–Albemarle</option>
+    <option value="CHS">CHS – Charleston International</option>
+    <option value="CID">CID – The Eastern Iowa Airport</option>
+    <option value="CIU">CIU – Chippewa County International</option>
+    <option value="CKB">CKB – North Central West Virginia Airport</option>
+    <option value="CLE">CLE – Cleveland Hopkins International</option>
+    <option value="CLL">CLL – Easterwood Airport</option>
+    <option value="CLT">CLT – Charlotte Douglas International</option>
+    <option value="CMH">CMH – John Glenn Columbus International</option>
+    <option value="CMI">CMI – University of Illinois Willard</option>
+    <option value="CMX">CMX – Houghton County Memorial</option>
+    <option value="CNY">CNY – Canyonlands Field</option>
+    <option value="COD">COD – Yellowstone Regional</option>
+    <option value="COS">COS – Colorado Springs Airport</option>
+    <option value="COU">COU – Columbia Regional</option>
+    <option value="CPR">CPR – Casper/Natrona County International</option>
+    <option value="CRP">CRP – Corpus Christi International</option>
+    <option value="CRW">CRW – Yeager Airport</option>
+    <option value="CSG">CSG – Columbus Airport</option>
+    <option value="CVG">CVG – Cincinnati/Northern Kentucky International</option>
+    <option value="CWA">CWA – Central Wisconsin Airport</option>
+    <option value="CYS">CYS – Cheyenne Regional</option>
+    <option value="DAB">DAB – Daytona Beach International</option>
+    <option value="DAL">DAL – Dallas Love Field</option>
+    <option value="DAY">DAY – Dayton International</option>
+    <option value="DBQ">DBQ – Dubuque Regional</option>
+    <option value="DCA">DCA – Ronald Reagan Washington National</option>
+    <option value="DDC">DDC – Dodge City Regional</option>
+    <option value="DEC">DEC – Decatur Airport</option>
+    <option value="DEN">DEN – Denver International</option>
+    <option value="DFW">DFW – Dallas/Fort Worth International</option>
+    <option value="DHN">DHN – Dothan Regional</option>
+    <option value="DIK">DIK – Dickinson Theodore Roosevelt Regional</option>
+    <option value="DLG">DLG – Dillingham Airport</option>
+    <option value="DLH">DLH – Duluth International</option>
+    <option value="DRO">DRO – Durango-La Plata County</option>
+    <option value="DRT">DRT – Del Rio International</option>
+    <option value="DSM">DSM – Des Moines International</option>
+    <option value="DTW">DTW – Detroit Metropolitan Wayne County</option>
+    <option value="DVL">DVL – Devils Lake Regional</option>
+    <option value="EAR">EAR – Kearney Regional</option>
+    <option value="EAT">EAT – Pangborn Memorial</option>
+    <option value="EAU">EAU – Chippewa Valley Regional</option>
+    <option value="ECP">ECP – Northwest Florida Beaches International</option>
+    <option value="EGE">EGE – Eagle County Regional</option>
+    <option value="EKO">EKO – Elko Regional</option>
+    <option value="ELM">ELM – Elmira/Corning Regional</option>
+    <option value="ELP">ELP – El Paso International</option>
+    <option value="ERI">ERI – Erie International</option>
+    <option value="ESC">ESC – Delta County Airport</option>
+    <option value="EUG">EUG – Eugene Airport</option>
+    <option value="EVV">EVV – Evansville Regional</option>
+    <option value="EWN">EWN – Coastal Carolina Regional</option>
+    <option value="EWR">EWR – Newark Liberty International</option>
+    <option value="EYW">EYW – Key West International</option>
+    <option value="FAI">FAI – Fairbanks International</option>
+    <option value="FAR">FAR – Hector International</option>
+    <option value="FAT">FAT – Fresno Yosemite International</option>
+    <option value="FAY">FAY – Fayetteville Regional</option>
+    <option value="FCA">FCA – Glacier Park International</option>
+    <option value="FLG">FLG – Flagstaff Pulliam Airport</option>
+    <option value="FLL">FLL – Fort Lauderdale-Hollywood International</option>
+    <option value="FLO">FLO – Florence Regional</option>
+    <option value="FNT">FNT – Bishop International</option>
+    <option value="FOD">FOD – Fort Dodge Regional</option>
+    <option value="FSD">FSD – Sioux Falls Regional</option>
+    <option value="FSM">FSM – Fort Smith Regional</option>
+    <option value="FWA">FWA – Fort Wayne International</option>
+    <option value="GCC">GCC – Gillette-Campbell County</option>
+    <option value="GCK">GCK – Garden City Regional</option>
+    <option value="GEG">GEG – Spokane International</option>
+    <option value="GFK">GFK – Grand Forks International</option>
+    <option value="GGG">GGG – East Texas Regional</option>
+    <option value="GJT">GJT – Grand Junction Regional</option>
+    <option value="GNV">GNV – Gainesville Regional</option>
+    <option value="GPT">GPT – Gulfport-Biloxi International</option>
+    <option value="GRB">GRB – Green Bay Austin Straubel International</option>
+    <option value="GRI">GRI – Central Nebraska Regional</option>
+    <option value="GRK">GRK – Killeen-Fort Hood Regional</option>
+    <option value="GRR">GRR – Gerald R. Ford International</option>
+    <option value="GSO">GSO – Piedmont Triad International</option>
+    <option value="GSP">GSP – Greenville-Spartanburg International</option>
+    <option value="GST">GST – Gustavus Airport</option>
+    <option value="GTF">GTF – Great Falls International</option>
+    <option value="GTR">GTR – Golden Triangle Regional</option>
+    <option value="GUC">GUC – Gunnison-Crested Butte Regional</option>
+    <option value="GUM">GUM – Antonio B. Won Pat International</option>
+    <option value="HDN">HDN – Yampa Valley Airport</option>
+    <option value="HGR">HGR – Hagerstown Regional</option>
+    <option value="HHH">HHH – Hilton Head Airport</option>
+    <option value="HIB">HIB – Range Regional Airport</option>
+    <option value="HLN">HLN – Helena Regional</option>
+    <option value="HNL">HNL – Daniel K. Inouye International</option>
+    <option value="HOB">HOB – Lea County Regional</option>
+    <option value="HOU">HOU – William P. Hobby Airport</option>
+    <option value="HPN">HPN – Westchester County Airport</option>
+    <option value="HRL">HRL – Valley International</option>
+    <option value="HSV">HSV – Huntsville International</option>
+    <option value="HTS">HTS – Tri-State/Milton J. Ferguson Field</option>
+    <option value="HVN">HVN – Tweed New Haven Airport</option>
+    <option value="HYA">HYA – Barnstable Municipal</option>
+    <option value="HYS">HYS – Hays Regional</option>
+    <option value="IAD">IAD – Washington Dulles International</option>
+    <option value="IAG">IAG – Niagara Falls International</option>
+    <option value="IAH">IAH – George Bush Intercontinental</option>
+    <option value="ICT">ICT – Wichita Dwight D. Eisenhower National</option>
+    <option value="IDA">IDA – Idaho Falls Regional</option>
+    <option value="ILG">ILG – Wilmington Airport</option>
+    <option value="ILM">ILM – Wilmington International</option>
+    <option value="IMT">IMT – Ford Airport</option>
+    <option value="IND">IND – Indianapolis International</option>
+    <option value="INL">INL – Falls International</option>
+    <option value="IPT">IPT – Williamsport Regional</option>
+    <option value="ISN">ISN – Sloulin Field International</option>
+    <option value="ISP">ISP – Long Island MacArthur Airport</option>
+    <option value="ITH">ITH – Ithaca Tompkins International</option>
+    <option value="ITO">ITO – Hilo International</option>
+    <option value="JAC">JAC – Jackson Hole Airport</option>
+    <option value="JAN">JAN – Jackson-Medgar Wiley Evers International</option>
+    <option value="JAX">JAX – Jacksonville International</option>
+    <option value="JFK">JFK – John F. Kennedy International</option>
+    <option value="JLN">JLN – Joplin Regional</option>
+    <option value="JMS">JMS – Jamestown Regional</option>
+    <option value="JNU">JNU – Juneau International</option>
+    <option value="JST">JST – John Murtha Johnstown-Cambria County</option>
+    <option value="KOA">KOA – Ellison Onizuka Kona International</option>
+    <option value="KTN">KTN – Ketchikan International</option>
+    <option value="LAN">LAN – Capital Region International</option>
+    <option value="LAR">LAR – Laramie Regional</option>
+    <option value="LAS">LAS – Harry Reid International</option>
+    <option value="LAW">LAW – Lawton-Fort Sill Regional</option>
+    <option value="LAX">LAX – Los Angeles International</option>
+    <option value="LBB">LBB – Lubbock Preston Smith International</option>
+    <option value="LBE">LBE – Arnold Palmer Regional</option>
+    <option value="LBF">LBF – North Platte Regional</option>
+    <option value="LBL">LBL – Liberal Mid-America Regional</option>
+    <option value="LCH">LCH – Lake Charles Regional</option>
+    <option value="LCK">LCK – Rickenbacker International</option>
+    <option value="LEX">LEX – Blue Grass Airport</option>
+    <option value="LFT">LFT – Lafayette Regional</option>
+    <option value="LGA">LGA – LaGuardia Airport</option>
+    <option value="LGB">LGB – Long Beach Airport</option>
+    <option value="LIH">LIH – Lihue Airport</option>
+    <option value="LIT">LIT – Bill and Hillary Clinton National</option>
+    <option value="LNK">LNK – Lincoln Airport</option>
+    <option value="LRD">LRD – Laredo International</option>
+    <option value="LSE">LSE – La Crosse Regional</option>
+    <option value="LWB">LWB – Greenbrier Valley Airport</option>
+    <option value="LWS">LWS – Lewiston-Nez Perce County</option>
+    <option value="LYH">LYH – Lynchburg Regional</option>
+    <option value="MAF">MAF – Midland International Air & Space Port</option>
+    <option value="MBS">MBS – MBS International</option>
+    <option value="MCI">MCI – Kansas City International</option>
+    <option value="MCO">MCO – Orlando International</option>
+    <option value="MCW">MCW – Mason City Municipal</option>
+    <option value="MDT">MDT – Harrisburg International</option>
+    <option value="MDW">MDW – Chicago Midway International</option>
+    <option value="MEI">MEI – Meridian Regional</option>
+    <option value="MEM">MEM – Memphis International</option>
+    <option value="MFE">MFE – McAllen Miller International</option>
+    <option value="MFR">MFR – Rogue Valley International-Medford</option>
+    <option value="MGM">MGM – Montgomery Regional</option>
+    <option value="MHK">MHK – Manhattan Regional</option>
+    <option value="MHT">MHT – Manchester-Boston Regional</option>
+    <option value="MIA">MIA – Miami International</option>
+    <option value="MKE">MKE – Milwaukee Mitchell International</option>
+    <option value="MKG">MKG – Muskegon County Airport</option>
+    <option value="MLB">MLB – Melbourne Orlando International</option>
+    <option value="MLI">MLI – Quad City International</option>
+    <option value="MLU">MLU – Monroe Regional</option>
+    <option value="MMH">MMH – Mammoth Yosemite Airport</option>
+    <option value="MOB">MOB – Mobile Regional</option>
+    <option value="MOT">MOT – Minot International</option>
+    <option value="MQT">MQT – Sawyer International</option>
+    <option value="MRY">MRY – Monterey Regional</option>
+    <option value="MSN">MSN – Dane County Regional</option>
+    <option value="MSO">MSO – Missoula Montana Airport</option>
+    <option value="MSP">MSP – Minneapolis-Saint Paul International</option>
+    <option value="MSY">MSY – Louis Armstrong New Orleans International</option>
+    <option value="MTJ">MTJ – Montrose Regional</option>
+    <option value="MVY">MVY – Martha's Vineyard Airport</option>
+    <option value="MYR">MYR – Myrtle Beach International</option>
+    <option value="OAJ">OAJ – Albert J. Ellis Airport</option>
+    <option value="OAK">OAK – Oakland International</option>
+    <option value="OGD">OGD – Ogden-Hinckley Airport</option>
+    <option value="OGG">OGG – Kahului Airport</option>
+    <option value="OGS">OGS – Ogdensburg International</option>
+    <option value="OKC">OKC – Will Rogers World Airport</option>
+    <option value="OMA">OMA – Eppley Airfield</option>
+    <option value="OME">OME – Nome Airport</option>
+    <option value="ONT">ONT – Ontario International</option>
+    <option value="ORD">ORD – O'Hare International</option>
+    <option value="ORF">ORF – Norfolk International</option>
+    <option value="ORH">ORH – Worcester Regional</option>
+    <option value="OTH">OTH – Southwest Oregon Regional</option>
+    <option value="OTZ">OTZ – Ralph Wien Memorial</option>
+    <option value="OWB">OWB – Owensboro-Daviess County Regional</option>
+    <option value="PAE">PAE – Paine Field</option>
+    <option value="PAH">PAH – Barkley Regional</option>
+    <option value="PBG">PBG – Plattsburgh International</option>
+    <option value="PBI">PBI – Palm Beach International</option>
+    <option value="PDX">PDX – Portland International</option>
+    <option value="PGD">PGD – Punta Gorda Airport</option>
+    <option value="PGV">PGV – Pitt-Greenville Airport</option>
+    <option value="PHF">PHF – Newport News/Williamsburg International</option>
+    <option value="PHL">PHL – Philadelphia International</option>
+    <option value="PHX">PHX – Phoenix Sky Harbor International</option>
+    <option value="PIA">PIA – General Wayne A. Downing Peoria International</option>
+    <option value="PIB">PIB – Hattiesburg-Laurel Regional</option>
+    <option value="PIE">PIE – St. Pete-Clearwater International</option>
+    <option value="PIH">PIH – Pocatello Regional</option>
+    <option value="PIR">PIR – Pierre Regional</option>
+    <option value="PIT">PIT – Pittsburgh International</option>
+    <option value="PLN">PLN – Pellston Regional</option>
+    <option value="PNS">PNS – Pensacola International</option>
+    <option value="PPG">PPG – Pago Pago International</option>
+    <option value="PRC">PRC – Prescott Regional</option>
+    <option value="PSC">PSC – Tri-Cities Airport</option>
+    <option value="PSE">PSE – Mercedita Airport</option>
+    <option value="PSG">PSG – Petersburg James A. Johnson Airport</option>
+    <option value="PSM">PSM – Portsmouth International at Pease</option>
+    <option value="PSP">PSP – Palm Springs International</option>
+    <option value="PUB">PUB – Pueblo Memorial</option>
+    <option value="PUW">PUW – Pullman-Moscow Regional</option>
+    <option value="PVD">PVD – Rhode Island T.F. Green International</option>
+    <option value="PVU">PVU – Provo Municipal</option>
+    <option value="PWM">PWM – Portland International Jetport</option>
+    <option value="RAP">RAP – Rapid City Regional</option>
+    <option value="RDD">RDD – Redding Municipal</option>
+    <option value="RDM">RDM – Roberts Field</option>
+    <option value="RDU">RDU – Raleigh-Durham International</option>
+    <option value="RFD">RFD – Chicago Rockford International</option>
+    <option value="RHI">RHI – Rhinelander-Oneida County</option>
+    <option value="RIC">RIC – Richmond International</option>
+    <option value="RIW">RIW – Riverton Regional</option>
+    <option value="RKS">RKS – Southwest Wyoming Regional</option>
+    <option value="RNO">RNO – Reno-Tahoe International</option>
+    <option value="ROA">ROA – Roanoke-Blacksburg Regional</option>
+    <option value="ROC">ROC – Greater Rochester International</option>
+    <option value="ROW">ROW – Roswell International Air Center</option>
+    <option value="RST">RST – Rochester International</option>
+    <option value="RSW">RSW – Southwest Florida International</option>
+    <option value="SAF">SAF – Santa Fe Regional</option>
+    <option value="SAN">SAN – San Diego International</option>
+    <option value="SAT">SAT – San Antonio International</option>
+    <option value="SAV">SAV – Savannah/Hilton Head International</option>
+    <option value="SBA">SBA – Santa Barbara Municipal</option>
+    <option value="SBN">SBN – South Bend International</option>
+    <option value="SBP">SBP – San Luis Obispo County Regional</option>
+    <option value="SCC">SCC – Deadhorse Airport</option>
+    <option value="SCE">SCE – University Park Airport</option>
+    <option value="SCK">SCK – Stockton Metropolitan</option>
+    <option value="SDF">SDF – Louisville Muhammad Ali International</option>
+    <option value="SEA">SEA – Seattle-Tacoma International</option>
+    <option value="SFB">SFB – Orlando Sanford International</option>
+    <option value="SFO">SFO – San Francisco International</option>
+    <option value="SGF">SGF – Springfield-Branson National</option>
+    <option value="SGU">SGU – St. George Regional</option>
+    <option value="SHD">SHD – Shenandoah Valley Regional</option>
+    <option value="SHR">SHR – Sheridan County Airport</option>
+    <option value="SHV">SHV – Shreveport Regional</option>
+    <option value="SIT">SIT – Sitka Rocky Gutierrez Airport</option>
+    <option value="SJC">SJC – Norman Y. Mineta San José International</option>
+    <option value="SJT">SJT – San Angelo Regional</option>
+    <option value="SJU">SJU – Luis Muñoz Marín International</option>
+    <option value="SLC">SLC – Salt Lake City International</option>
+    <option value="SLN">SLN – Salina Regional</option>
+    <option value="SMF">SMF – Sacramento International</option>
+    <option value="SMX">SMX – Santa Maria Public Airport</option>
+    <option value="SNA">SNA – John Wayne Airport</option>
+    <option value="SPI">SPI – Abraham Lincoln Capital Airport</option>
+    <option value="SPN">SPN – Saipan International</option>
+    <option value="SPS">SPS – Wichita Falls Regional</option>
+    <option value="SRQ">SRQ – Sarasota-Bradenton International</option>
+    <option value="STC">STC – St. Cloud Regional</option>
+    <option value="STL">STL – St. Louis Lambert International</option>
+    <option value="STS">STS – Charles M. Schulz–Sonoma County</option>
+    <option value="STT">STT – Cyril E. King Airport</option>
+    <option value="STX">STX – Henry E. Rohlsen Airport</option>
+    <option value="SUN">SUN – Friedman Memorial Airport</option>
+    <option value="SUX">SUX – Sioux Gateway Airport</option>
+    <option value="SWF">SWF – New York Stewart International</option>
+    <option value="SWO">SWO – Stillwater Regional</option>
+    <option value="SYR">SYR – Syracuse Hancock International</option>
+    <option value="TBN">TBN – Waynesville-St. Robert Regional</option>
+    <option value="TLH">TLH – Tallahassee International</option>
+    <option value="TOL">TOL – Eugene F. Kranz Toledo Express</option>
+    <option value="TPA">TPA – Tampa International</option>
+    <option value="TRI">TRI – Tri-Cities Regional</option>
+    <option value="TTN">TTN – Trenton-Mercer Airport</option>
+    <option value="TUL">TUL – Tulsa International</option>
+    <option value="TUS">TUS – Tucson International</option>
+    <option value="TVC">TVC – Cherry Capital Airport</option>
+    <option value="TWF">TWF – Magic Valley Regional</option>
+    <option value="TXK">TXK – Texarkana Regional</option>
+    <option value="TYR">TYR – Tyler Pounds Regional</option>
+    <option value="TYS">TYS – McGhee Tyson Airport</option>
+    <option value="UIN">UIN – Quincy Regional</option>
+    <option value="USA">USA – Concord-Padgett Regional</option>
+    <option value="VCT">VCT – Victoria Regional</option>
+    <option value="VEL">VEL – Vernal Regional</option>
+    <option value="VLD">VLD – Valdosta Regional</option>
+    <option value="VPS">VPS – Destin-Fort Walton Beach Airport</option>
+    <option value="WRG">WRG – Wrangell Airport</option>
+    <option value="WYS">WYS – Yellowstone Airport</option>
+    <option value="XNA">XNA – Northwest Arkansas National</option>
+    <option value="XWA">XWA – Williston Basin International</option>
+    <option value="YAK">YAK – Yakutat Airport</option>
+    <option value="YKM">YKM – Yakima Air Terminal</option>
+    <option value="YUM">YUM – Yuma International</option>
+</select>
+                        
+                    </select>
+                    <div class="input-hint">Your departure airport code</div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <span class="icon">🛬</span> To (Destination Airport)
+                    </label>
+                    <select name="dest" required>
+    <option value="">-- Select Destination --</option>
+    <option value="ABE">ABE – Lehigh Valley International</option>
+    <option value="ABI">ABI – Abilene Regional</option>
+    <option value="ABQ">ABQ – Albuquerque International Sunport</option>
+    <option value="ABR">ABR – Aberdeen Regional</option>
+    <option value="ABY">ABY – Southwest Georgia Regional</option>
+    <option value="ACK">ACK – Nantucket Memorial</option>
+    <option value="ACT">ACT – Waco Regional</option>
+    <option value="ACV">ACV – California Redwood Coast-Humboldt County</option>
+    <option value="ACY">ACY – Atlantic City International</option>
+    <option value="ADK">ADK – Adak Airport</option>
+    <option value="ADQ">ADQ – Kodiak Airport</option>
+    <option value="AEX">AEX – Alexandria International</option>
+    <option value="AGS">AGS – Augusta Regional</option>
+    <option value="AKN">AKN – King Salmon Airport</option>
+    <option value="ALB">ALB – Albany International</option>
+    <option value="ALO">ALO – Waterloo Regional</option>
+    <option value="ALS">ALS – San Luis Valley Regional</option>
+    <option value="ALW">ALW – Walla Walla Regional</option>
+    <option value="AMA">AMA – Rick Husband Amarillo International</option>
+    <option value="ANC">ANC – Ted Stevens Anchorage International</option>
+    <option value="APN">APN – Alpena County Regional</option>
+    <option value="ART">ART – Watertown International</option>
+    <option value="ASE">ASE – Aspen/Pitkin County</option>
+    <option value="ATL">ATL – Hartsfield-Jackson Atlanta International</option>
+    <option value="ATW">ATW – Appleton International</option>
+    <option value="ATY">ATY – Watertown Regional</option>
+    <option value="AUS">AUS – Austin-Bergstrom International</option>
+    <option value="AVL">AVL – Asheville Regional</option>
+    <option value="AVP">AVP – Wilkes-Barre/Scranton International</option>
+    <option value="AZA">AZA – Phoenix-Mesa Gateway</option>
+    <option value="AZO">AZO – Kalamazoo/Battle Creek International</option>
+    <option value="BDL">BDL – Bradley International</option>
+    <option value="BET">BET – Bethel Airport</option>
+    <option value="BFF">BFF – Western Nebraska Regional</option>
+    <option value="BFL">BFL – Meadows Field Bakersfield</option>
+    <option value="BFM">BFM – Mobile Downtown Airport</option>
+    <option value="BGM">BGM – Greater Binghamton/Edwin A. Link Field</option>
+    <option value="BGR">BGR – Bangor International</option>
+    <option value="BHM">BHM – Birmingham-Shuttlesworth International</option>
+    <option value="BIH">BIH – Eastern Sierra Regional</option>
+    <option value="BIL">BIL – Billings Logan International</option>
+    <option value="BIS">BIS – Bismarck Municipal</option>
+    <option value="BJI">BJI – Bemidji Regional</option>
+    <option value="BKG">BKG – Branson Airport</option>
+    <option value="BLI">BLI – Bellingham International</option>
+    <option value="BLV">BLV – MidAmerica St. Louis Airport</option>
+    <option value="BMI">BMI – Central Illinois Regional</option>
+    <option value="BNA">BNA – Nashville International</option>
+    <option value="BOI">BOI – Boise Airport</option>
+    <option value="BOS">BOS – Logan International</option>
+    <option value="BPT">BPT – Jack Brooks Regional</option>
+    <option value="BQK">BQK – Brunswick Golden Isles Airport</option>
+    <option value="BQN">BQN – Rafael Hernández Airport</option>
+    <option value="BRD">BRD – Brainerd Lakes Regional</option>
+    <option value="BRO">BRO – Brownsville/South Padre Island International</option>
+    <option value="BRW">BRW – Wiley Post-Will Rogers Memorial</option>
+    <option value="BTM">BTM – Bert Mooney Airport</option>
+    <option value="BTR">BTR – Baton Rouge Metropolitan</option>
+    <option value="BTV">BTV – Burlington International</option>
+    <option value="BUF">BUF – Buffalo Niagara International</option>
+    <option value="BUR">BUR – Hollywood Burbank Airport</option>
+    <option value="BWI">BWI – Baltimore/Washington International</option>
+    <option value="BZN">BZN – Bozeman Yellowstone International</option>
+    <option value="CAE">CAE – Columbia Metropolitan</option>
+    <option value="CAK">CAK – Akron-Canton Airport</option>
+    <option value="CDB">CDB – Cold Bay Airport</option>
+    <option value="CDC">CDC – Cedar City Regional</option>
+    <option value="CDV">CDV – Merle K. (Mudhole) Smith Airport</option>
+    <option value="CGI">CGI – Cape Girardeau Regional</option>
+    <option value="CHA">CHA – Chattanooga Metropolitan</option>
+    <option value="CHO">CHO – Charlottesville–Albemarle</option>
+    <option value="CHS">CHS – Charleston International</option>
+    <option value="CID">CID – The Eastern Iowa Airport</option>
+    <option value="CIU">CIU – Chippewa County International</option>
+    <option value="CKB">CKB – North Central West Virginia Airport</option>
+    <option value="CLE">CLE – Cleveland Hopkins International</option>
+    <option value="CLL">CLL – Easterwood Airport</option>
+    <option value="CLT">CLT – Charlotte Douglas International</option>
+    <option value="CMH">CMH – John Glenn Columbus International</option>
+    <option value="CMI">CMI – University of Illinois Willard</option>
+    <option value="CMX">CMX – Houghton County Memorial</option>
+    <option value="CNY">CNY – Canyonlands Field</option>
+    <option value="COD">COD – Yellowstone Regional</option>
+    <option value="COS">COS – Colorado Springs Airport</option>
+    <option value="COU">COU – Columbia Regional</option>
+    <option value="CPR">CPR – Casper/Natrona County International</option>
+    <option value="CRP">CRP – Corpus Christi International</option>
+    <option value="CRW">CRW – Yeager Airport</option>
+    <option value="CSG">CSG – Columbus Airport</option>
+    <option value="CVG">CVG – Cincinnati/Northern Kentucky International</option>
+    <option value="CWA">CWA – Central Wisconsin Airport</option>
+    <option value="CYS">CYS – Cheyenne Regional</option>
+    <option value="DAB">DAB – Daytona Beach International</option>
+    <option value="DAL">DAL – Dallas Love Field</option>
+    <option value="DAY">DAY – Dayton International</option>
+    <option value="DBQ">DBQ – Dubuque Regional</option>
+    <option value="DCA">DCA – Ronald Reagan Washington National</option>
+    <option value="DDC">DDC – Dodge City Regional</option>
+    <option value="DEC">DEC – Decatur Airport</option>
+    <option value="DEN">DEN – Denver International</option>
+    <option value="DFW">DFW – Dallas/Fort Worth International</option>
+    <option value="DHN">DHN – Dothan Regional</option>
+    <option value="DIK">DIK – Dickinson Theodore Roosevelt Regional</option>
+    <option value="DLG">DLG – Dillingham Airport</option>
+    <option value="DLH">DLH – Duluth International</option>
+    <option value="DRO">DRO – Durango-La Plata County</option>
+    <option value="DRT">DRT – Del Rio International</option>
+    <option value="DSM">DSM – Des Moines International</option>
+    <option value="DTW">DTW – Detroit Metropolitan Wayne County</option>
+    <option value="DVL">DVL – Devils Lake Regional</option>
+    <option value="EAR">EAR – Kearney Regional</option>
+    <option value="EAT">EAT – Pangborn Memorial</option>
+    <option value="EAU">EAU – Chippewa Valley Regional</option>
+    <option value="ECP">ECP – Northwest Florida Beaches International</option>
+    <option value="EGE">EGE – Eagle County Regional</option>
+    <option value="EKO">EKO – Elko Regional</option>
+    <option value="ELM">ELM – Elmira/Corning Regional</option>
+    <option value="ELP">ELP – El Paso International</option>
+    <option value="ERI">ERI – Erie International</option>
+    <option value="ESC">ESC – Delta County Airport</option>
+    <option value="EUG">EUG – Eugene Airport</option>
+    <option value="EVV">EVV – Evansville Regional</option>
+    <option value="EWN">EWN – Coastal Carolina Regional</option>
+    <option value="EWR">EWR – Newark Liberty International</option>
+    <option value="EYW">EYW – Key West International</option>
+    <option value="FAI">FAI – Fairbanks International</option>
+    <option value="FAR">FAR – Hector International</option>
+    <option value="FAT">FAT – Fresno Yosemite International</option>
+    <option value="FAY">FAY – Fayetteville Regional</option>
+    <option value="FCA">FCA – Glacier Park International</option>
+    <option value="FLG">FLG – Flagstaff Pulliam Airport</option>
+    <option value="FLL">FLL – Fort Lauderdale-Hollywood International</option>
+    <option value="FLO">FLO – Florence Regional</option>
+    <option value="FNT">FNT – Bishop International</option>
+    <option value="FOD">FOD – Fort Dodge Regional</option>
+    <option value="FSD">FSD – Sioux Falls Regional</option>
+    <option value="FSM">FSM – Fort Smith Regional</option>
+    <option value="FWA">FWA – Fort Wayne International</option>
+    <option value="GCC">GCC – Gillette-Campbell County</option>
+    <option value="GCK">GCK – Garden City Regional</option>
+    <option value="GEG">GEG – Spokane International</option>
+    <option value="GFK">GFK – Grand Forks International</option>
+    <option value="GGG">GGG – East Texas Regional</option>
+    <option value="GJT">GJT – Grand Junction Regional</option>
+    <option value="GNV">GNV – Gainesville Regional</option>
+    <option value="GPT">GPT – Gulfport-Biloxi International</option>
+    <option value="GRB">GRB – Green Bay Austin Straubel International</option>
+    <option value="GRI">GRI – Central Nebraska Regional</option>
+    <option value="GRK">GRK – Killeen-Fort Hood Regional</option>
+    <option value="GRR">GRR – Gerald R. Ford International</option>
+    <option value="GSO">GSO – Piedmont Triad International</option>
+    <option value="GSP">GSP – Greenville-Spartanburg International</option>
+    <option value="GST">GST – Gustavus Airport</option>
+    <option value="GTF">GTF – Great Falls International</option>
+    <option value="GTR">GTR – Golden Triangle Regional</option>
+    <option value="GUC">GUC – Gunnison-Crested Butte Regional</option>
+    <option value="GUM">GUM – Antonio B. Won Pat International</option>
+    <option value="HDN">HDN – Yampa Valley Airport</option>
+    <option value="HGR">HGR – Hagerstown Regional</option>
+    <option value="HHH">HHH – Hilton Head Airport</option>
+    <option value="HIB">HIB – Range Regional Airport</option>
+    <option value="HLN">HLN – Helena Regional</option>
+    <option value="HNL">HNL – Daniel K. Inouye International</option>
+    <option value="HOB">HOB – Lea County Regional</option>
+    <option value="HOU">HOU – William P. Hobby Airport</option>
+    <option value="HPN">HPN – Westchester County Airport</option>
+    <option value="HRL">HRL – Valley International</option>
+    <option value="HSV">HSV – Huntsville International</option>
+    <option value="HTS">HTS – Tri-State/Milton J. Ferguson Field</option>
+    <option value="HVN">HVN – Tweed New Haven Airport</option>
+    <option value="HYA">HYA – Barnstable Municipal</option>
+    <option value="HYS">HYS – Hays Regional</option>
+    <option value="IAD">IAD – Washington Dulles International</option>
+    <option value="IAG">IAG – Niagara Falls International</option>
+    <option value="IAH">IAH – George Bush Intercontinental</option>
+    <option value="ICT">ICT – Wichita Dwight D. Eisenhower National</option>
+    <option value="IDA">IDA – Idaho Falls Regional</option>
+    <option value="ILG">ILG – Wilmington Airport</option>
+    <option value="ILM">ILM – Wilmington International</option>
+    <option value="IMT">IMT – Ford Airport</option>
+    <option value="IND">IND – Indianapolis International</option>
+    <option value="INL">INL – Falls International</option>
+    <option value="IPT">IPT – Williamsport Regional</option>
+    <option value="ISN">ISN – Sloulin Field International</option>
+    <option value="ISP">ISP – Long Island MacArthur Airport</option>
+    <option value="ITH">ITH – Ithaca Tompkins International</option>
+    <option value="ITO">ITO – Hilo International</option>
+    <option value="JAC">JAC – Jackson Hole Airport</option>
+    <option value="JAN">JAN – Jackson-Medgar Wiley Evers International</option>
+    <option value="JAX">JAX – Jacksonville International</option>
+    <option value="JFK">JFK – John F. Kennedy International</option>
+    <option value="JLN">JLN – Joplin Regional</option>
+    <option value="JMS">JMS – Jamestown Regional</option>
+    <option value="JNU">JNU – Juneau International</option>
+    <option value="JST">JST – John Murtha Johnstown-Cambria County</option>
+    <option value="KOA">KOA – Ellison Onizuka Kona International</option>
+    <option value="KTN">KTN – Ketchikan International</option>
+    <option value="LAN">LAN – Capital Region International</option>
+    <option value="LAR">LAR – Laramie Regional</option>
+    <option value="LAS">LAS – Harry Reid International</option>
+    <option value="LAW">LAW – Lawton-Fort Sill Regional</option>
+    <option value="LAX">LAX – Los Angeles International</option>
+    <option value="LBB">LBB – Lubbock Preston Smith International</option>
+    <option value="LBE">LBE – Arnold Palmer Regional</option>
+    <option value="LBF">LBF – North Platte Regional</option>
+    <option value="LBL">LBL – Liberal Mid-America Regional</option>
+    <option value="LCH">LCH – Lake Charles Regional</option>
+    <option value="LCK">LCK – Rickenbacker International</option>
+    <option value="LEX">LEX – Blue Grass Airport</option>
+    <option value="LFT">LFT – Lafayette Regional</option>
+    <option value="LGA">LGA – LaGuardia Airport</option>
+    <option value="LGB">LGB – Long Beach Airport</option>
+    <option value="LIH">LIH – Lihue Airport</option>
+    <option value="LIT">LIT – Bill and Hillary Clinton National</option>
+    <option value="LNK">LNK – Lincoln Airport</option>
+    <option value="LRD">LRD – Laredo International</option>
+    <option value="LSE">LSE – La Crosse Regional</option>
+    <option value="LWB">LWB – Greenbrier Valley Airport</option>
+    <option value="LWS">LWS – Lewiston-Nez Perce County</option>
+    <option value="LYH">LYH – Lynchburg Regional</option>
+    <option value="MAF">MAF – Midland International Air & Space Port</option>
+    <option value="MBS">MBS – MBS International</option>
+    <option value="MCI">MCI – Kansas City International</option>
+    <option value="MCO">MCO – Orlando International</option>
+    <option value="MCW">MCW – Mason City Municipal</option>
+    <option value="MDT">MDT – Harrisburg International</option>
+    <option value="MDW">MDW – Chicago Midway International</option>
+    <option value="MEI">MEI – Meridian Regional</option>
+    <option value="MEM">MEM – Memphis International</option>
+    <option value="MFE">MFE – McAllen Miller International</option>
+    <option value="MFR">MFR – Rogue Valley International-Medford</option>
+    <option value="MGM">MGM – Montgomery Regional</option>
+    <option value="MHK">MHK – Manhattan Regional</option>
+    <option value="MHT">MHT – Manchester-Boston Regional</option>
+    <option value="MIA">MIA – Miami International</option>
+    <option value="MKE">MKE – Milwaukee Mitchell International</option>
+    <option value="MKG">MKG – Muskegon County Airport</option>
+    <option value="MLB">MLB – Melbourne Orlando International</option>
+    <option value="MLI">MLI – Quad City International</option>
+    <option value="MLU">MLU – Monroe Regional</option>
+    <option value="MMH">MMH – Mammoth Yosemite Airport</option>
+    <option value="MOB">MOB – Mobile Regional</option>
+    <option value="MOT">MOT – Minot International</option>
+    <option value="MQT">MQT – Sawyer International</option>
+    <option value="MRY">MRY – Monterey Regional</option>
+    <option value="MSN">MSN – Dane County Regional</option>
+    <option value="MSO">MSO – Missoula Montana Airport</option>
+    <option value="MSP">MSP – Minneapolis-Saint Paul International</option>
+    <option value="MSY">MSY – Louis Armstrong New Orleans International</option>
+    <option value="MTJ">MTJ – Montrose Regional</option>
+    <option value="MVY">MVY – Martha's Vineyard Airport</option>
+    <option value="MYR">MYR – Myrtle Beach International</option>
+    <option value="OAJ">OAJ – Albert J. Ellis Airport</option>
+    <option value="OAK">OAK – Oakland International</option>
+    <option value="OGD">OGD – Ogden-Hinckley Airport</option>
+    <option value="OGG">OGG – Kahului Airport</option>
+    <option value="OGS">OGS – Ogdensburg International</option>
+    <option value="OKC">OKC – Will Rogers World Airport</option>
+    <option value="OMA">OMA – Eppley Airfield</option>
+    <option value="OME">OME – Nome Airport</option>
+    <option value="ONT">ONT – Ontario International</option>
+    <option value="ORD">ORD – O'Hare International</option>
+    <option value="ORF">ORF – Norfolk International</option>
+    <option value="ORH">ORH – Worcester Regional</option>
+    <option value="OTH">OTH – Southwest Oregon Regional</option>
+    <option value="OTZ">OTZ – Ralph Wien Memorial</option>
+    <option value="OWB">OWB – Owensboro-Daviess County Regional</option>
+    <option value="PAE">PAE – Paine Field</option>
+    <option value="PAH">PAH – Barkley Regional</option>
+    <option value="PBG">PBG – Plattsburgh International</option>
+    <option value="PBI">PBI – Palm Beach International</option>
+    <option value="PDX">PDX – Portland International</option>
+    <option value="PGD">PGD – Punta Gorda Airport</option>
+    <option value="PGV">PGV – Pitt-Greenville Airport</option>
+    <option value="PHF">PHF – Newport News/Williamsburg International</option>
+    <option value="PHL">PHL – Philadelphia International</option>
+    <option value="PHX">PHX – Phoenix Sky Harbor International</option>
+    <option value="PIA">PIA – General Wayne A. Downing Peoria International</option>
+    <option value="PIB">PIB – Hattiesburg-Laurel Regional</option>
+    <option value="PIE">PIE – St. Pete-Clearwater International</option>
+    <option value="PIH">PIH – Pocatello Regional</option>
+    <option value="PIR">PIR – Pierre Regional</option>
+    <option value="PIT">PIT – Pittsburgh International</option>
+    <option value="PLN">PLN – Pellston Regional</option>
+    <option value="PNS">PNS – Pensacola International</option>
+    <option value="PPG">PPG – Pago Pago International</option>
+    <option value="PRC">PRC – Prescott Regional</option>
+    <option value="PSC">PSC – Tri-Cities Airport</option>
+    <option value="PSE">PSE – Mercedita Airport</option>
+    <option value="PSG">PSG – Petersburg James A. Johnson Airport</option>
+    <option value="PSM">PSM – Portsmouth International at Pease</option>
+    <option value="PSP">PSP – Palm Springs International</option>
+    <option value="PUB">PUB – Pueblo Memorial</option>
+    <option value="PUW">PUW – Pullman-Moscow Regional</option>
+    <option value="PVD">PVD – Rhode Island T.F. Green International</option>
+    <option value="PVU">PVU – Provo Municipal</option>
+    <option value="PWM">PWM – Portland International Jetport</option>
+    <option value="RAP">RAP – Rapid City Regional</option>
+    <option value="RDD">RDD – Redding Municipal</option>
+    <option value="RDM">RDM – Roberts Field</option>
+    <option value="RDU">RDU – Raleigh-Durham International</option>
+    <option value="RFD">RFD – Chicago Rockford International</option>
+    <option value="RHI">RHI – Rhinelander-Oneida County</option>
+    <option value="RIC">RIC – Richmond International</option>
+    <option value="RIW">RIW – Riverton Regional</option>
+    <option value="RKS">RKS – Southwest Wyoming Regional</option>
+    <option value="RNO">RNO – Reno-Tahoe International</option>
+    <option value="ROA">ROA – Roanoke-Blacksburg Regional</option>
+    <option value="ROC">ROC – Greater Rochester International</option>
+    <option value="ROW">ROW – Roswell International Air Center</option>
+    <option value="RST">RST – Rochester International</option>
+    <option value="RSW">RSW – Southwest Florida International</option>
+    <option value="SAF">SAF – Santa Fe Regional</option>
+    <option value="SAN">SAN – San Diego International</option>
+    <option value="SAT">SAT – San Antonio International</option>
+    <option value="SAV">SAV – Savannah/Hilton Head International</option>
+    <option value="SBA">SBA – Santa Barbara Municipal</option>
+    <option value="SBN">SBN – South Bend International</option>
+    <option value="SBP">SBP – San Luis Obispo County Regional</option>
+    <option value="SCC">SCC – Deadhorse Airport</option>
+    <option value="SCE">SCE – University Park Airport</option>
+    <option value="SCK">SCK – Stockton Metropolitan</option>
+    <option value="SDF">SDF – Louisville Muhammad Ali International</option>
+    <option value="SEA">SEA – Seattle-Tacoma International</option>
+    <option value="SFB">SFB – Orlando Sanford International</option>
+    <option value="SFO">SFO – San Francisco International</option>
+    <option value="SGF">SGF – Springfield-Branson National</option>
+    <option value="SGU">SGU – St. George Regional</option>
+    <option value="SHD">SHD – Shenandoah Valley Regional</option>
+    <option value="SHR">SHR – Sheridan County Airport</option>
+    <option value="SHV">SHV – Shreveport Regional</option>
+    <option value="SIT">SIT – Sitka Rocky Gutierrez Airport</option>
+    <option value="SJC">SJC – Norman Y. Mineta San José International</option>
+    <option value="SJT">SJT – San Angelo Regional</option>
+    <option value="SJU">SJU – Luis Muñoz Marín International</option>
+    <option value="SLC">SLC – Salt Lake City International</option>
+    <option value="SLN">SLN – Salina Regional</option>
+    <option value="SMF">SMF – Sacramento International</option>
+    <option value="SMX">SMX – Santa Maria Public Airport</option>
+    <option value="SNA">SNA – John Wayne Airport</option>
+    <option value="SPI">SPI – Abraham Lincoln Capital Airport</option>
+    <option value="SPN">SPN – Saipan International</option>
+    <option value="SPS">SPS – Wichita Falls Regional</option>
+    <option value="SRQ">SRQ – Sarasota-Bradenton International</option>
+    <option value="STC">STC – St. Cloud Regional</option>
+    <option value="STL">STL – St. Louis Lambert International</option>
+    <option value="STS">STS – Charles M. Schulz–Sonoma County</option>
+    <option value="STT">STT – Cyril E. King Airport</option>
+    <option value="STX">STX – Henry E. Rohlsen Airport</option>
+    <option value="SUN">SUN – Friedman Memorial Airport</option>
+    <option value="SUX">SUX – Sioux Gateway Airport</option>
+    <option value="SWF">SWF – New York Stewart International</option>
+    <option value="SWO">SWO – Stillwater Regional</option>
+    <option value="SYR">SYR – Syracuse Hancock International</option>
+    <option value="TBN">TBN – Waynesville-St. Robert Regional</option>
+    <option value="TLH">TLH – Tallahassee International</option>
+    <option value="TOL">TOL – Eugene F. Kranz Toledo Express</option>
+    <option value="TPA">TPA – Tampa International</option>
+    <option value="TRI">TRI – Tri-Cities Regional</option>
+    <option value="TTN">TTN – Trenton-Mercer Airport</option>
+    <option value="TUL">TUL – Tulsa International</option>
+    <option value="TUS">TUS – Tucson International</option>
+    <option value="TVC">TVC – Cherry Capital Airport</option>
+    <option value="TWF">TWF – Magic Valley Regional</option>
+    <option value="TXK">TXK – Texarkana Regional</option>
+    <option value="TYR">TYR – Tyler Pounds Regional</option>
+    <option value="TYS">TYS – McGhee Tyson Airport</option>
+    <option value="UIN">UIN – Quincy Regional</option>
+    <option value="USA">USA – Concord-Padgett Regional</option>
+    <option value="VCT">VCT – Victoria Regional</option>
+    <option value="VEL">VEL – Vernal Regional</option>
+    <option value="VLD">VLD – Valdosta Regional</option>
+    <option value="VPS">VPS – Destin-Fort Walton Beach Airport</option>
+    <option value="WRG">WRG – Wrangell Airport</option>
+    <option value="WYS">WYS – Yellowstone Airport</option>
+    <option value="XNA">XNA – Northwest Arkansas National</option>
+    <option value="XWA">XWA – Williston Basin International</option>
+    <option value="YAK">YAK – Yakutat Airport</option>
+    <option value="YKM">YKM – Yakima Air Terminal</option>
+    <option value="YUM">YUM – Yuma International</option>
+</select>
+                    </select>
+                    <div class="input-hint">Your arrival airport code</div>
+                </div>
+
+                <!-- ===== POPUP CALENDAR ===== -->
+                <div class="form-group">
+                    <label>
+                        <span class="icon">📅</span> Flight Date
+                    </label>
+
+                    <div class="calendar-wrapper">
+                        <button type="button" class="calendar-input-btn" onclick="toggleCalendar()">
+                            <span id="cal-display">-- Select Flight Date --</span>
+                            <span>📆</span>
+                        </button>
+
+                        <div class="calendar-popup" id="calendarPopup">
+                            <div class="cal-header">
+                                <button type="button" onclick="changeMonth(-1)">&#8249;</button>
+                                <span class="cal-month-year" id="calMonthYear"></span>
+                                <button type="button" onclick="changeMonth(1)">&#8250;</button>
+                            </div>
+                            <div class="cal-days-header">
+                                <span>Su</span><span>Mo</span><span>Tu</span>
+                                <span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                            </div>
+                            <div class="cal-days-grid" id="calGrid"></div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden fields sent to Flask -->
+                    <input type="hidden" name="month" id="hidden_month">
+                    <input type="hidden" name="day"   id="hidden_day">
+                    <input type="hidden" name="dep_delay" value="0">
+                    <div class="input-hint" id="date_hint">Pick your flight date — day &amp; month auto-detected</div>
+                </div>
+                <!-- ===== END CALENDAR ===== -->
+
+            </div>
+
+            <button type="submit" class="predict-btn">
+                ✈ &nbsp; Predict My Flight Delay Risk
+            </button>
+
+        </form>
+    </div>
+
+    <div class="info-cards">
+        <div class="info-card">
+            <div class="info-card-icon">✈</div>
+            <h3>3M+</h3>
+            <p>Flights Analysed</p>
+        </div>
+        <div class="info-card">
+            <div class="info-card-icon">🎯</div>
+            <h3>{{ accuracy }}%</h3>
+            <p>Model Accuracy</p>
+        </div>
+        <div class="info-card">
+            <div class="info-card-icon">⚠</div>
+            <h3>5</h3>
+            <p>Delay Causes Tracked</p>
+        </div>
+        <div class="info-card">
+            <div class="info-card-icon">📊</div>
+            <h3>2019–2023</h3>
+            <p>Data Coverage</p>
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    <p>Flight Delay Analysis Project &nbsp;|&nbsp; Data: US Bureau of Transportation Statistics</p>
+</footer>
+
+<script>
+// ========== CALENDAR ==========
+const dayNames   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const monthNames = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+
+const today = new Date();
+today.setHours(0,0,0,0);
+
+let currentYear  = today.getFullYear();
+let currentMonth = today.getMonth(); // 0-indexed
+let selectedDate = null;
+
+function toggleCalendar() {
+    const popup = document.getElementById('calendarPopup');
+    popup.classList.toggle('open');
+    if (popup.classList.contains('open')) renderCalendar();
+}
+
+// Close calendar when clicking outside
+document.addEventListener('click', function(e) {
+    const wrapper = document.querySelector('.calendar-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        document.getElementById('calendarPopup').classList.remove('open');
+    }
+});
+
+function changeMonth(dir) {
+    currentMonth += dir;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
+    renderCalendar();
+}
+
+function renderCalendar() {
+    document.getElementById('calMonthYear').textContent =
+        `${monthNames[currentMonth]} ${currentYear}`;
+
+    const grid = document.getElementById('calGrid');
+    grid.innerHTML = '';
+
+    const firstDay    = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement('div');
+        empty.classList.add('cal-day', 'empty');
+        grid.appendChild(empty);
+    }
+
+    // Day cells
+    for (let d = 1; d <= daysInMonth; d++) {
+        const cellDate = new Date(currentYear, currentMonth, d);
+        const div = document.createElement('div');
+        div.classList.add('cal-day');
+        div.textContent = d;
+
+        if (cellDate < today) {
+            div.classList.add('past');
+        }
+        if (cellDate.toDateString() === today.toDateString()) {
+            div.classList.add('today');
+        }
+        if (selectedDate && cellDate.toDateString() === selectedDate.toDateString()) {
+            div.classList.add('selected');
+        }
+
+        div.addEventListener('click', () => selectDate(cellDate));
+        grid.appendChild(div);
+    }
+}
+
+function selectDate(date) {
+    selectedDate = date;
+
+    const d      = date.getDate();
+    const month  = date.getMonth() + 1;  // 1-indexed for Flask
+    const year   = date.getFullYear();
+    const jsDay  = date.getDay();         // 0=Sun
+
+    // Model format: Mon=0 ... Sun=6
+    const modelDay = jsDay === 0 ? 6 : jsDay - 1;
+
+    // Update hidden inputs for Flask
+    document.getElementById('hidden_month').value = month;
+    document.getElementById('hidden_day').value   = modelDay;
+
+    // Update button display
+    document.getElementById('cal-display').textContent =
+        `${dayNames[jsDay]}, ${monthNames[month - 1]} ${d}, ${year}`;
+
+    // Update hint
+    document.getElementById('date_hint').textContent =
+        `✅ ${dayNames[jsDay]} · ${monthNames[month - 1]} ${d}, ${year}`;
+
+    // Close popup & re-render to show selection
+    document.getElementById('calendarPopup').classList.remove('open');
+    renderCalendar();
+}
+
+// ========== FORM SUBMIT ==========
+function prepareAndSubmit() {
+    if (!selectedDate) {
+        alert('Please select your flight date.');
+        return false;
+    }
+    showLoader();
+    return true;
+}
+
+// ========== LOADER ==========
+function showLoader() {
+    document.getElementById('loader').classList.add('active');
+}
+
+// ========== STARS ==========
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 80; i++) {
+    const star = document.createElement('div');
+    star.classList.add('star');
+    const size = Math.random() * 2.5 + 1;
+    star.style.cssText = `
+        width: ${size}px;
+        height: ${size}px;
+        top: ${Math.random() * 100}%;
+        left: ${Math.random() * 100}%;
+        animation-duration: ${Math.random() * 3 + 2}s;
+        animation-delay: ${Math.random() * 3}s;
+    `;
+    starsEl.appendChild(star);
+}
+</script>
+
+</body>
+</html>

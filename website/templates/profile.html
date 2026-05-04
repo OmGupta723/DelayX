@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile – Flight Delay Predictor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .profile-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .profile-hero {
+            background: rgba(255,255,255,0.97);
+            border-radius: 24px;
+            padding: 36px;
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+            animation: popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+        }
+        @keyframes popIn {
+            from { transform: scale(0.92); opacity: 0; }
+            to   { transform: scale(1);    opacity: 1; }
+        }
+        .avatar {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, #1a3a6b, #2980b9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            color: white;
+            font-weight: 800;
+            flex-shrink: 0;
+            box-shadow: 0 6px 20px rgba(41,128,185,0.4);
+        }
+        .profile-info h2 {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1a3a6b;
+        }
+        .profile-info p {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .profile-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #1a3a6b, #2980b9);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 22px 16px;
+            text-align: center;
+            color: white;
+            transition: all 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.14);
+        }
+        .stat-icon { font-size: 24px; margin-bottom: 8px; }
+        .stat-card h3 { font-size: 28px; font-weight: 800; }
+        .stat-card p  { font-size: 11px; opacity: 0.65; margin-top: 4px; }
+        .history-card {
+            background: rgba(255,255,255,0.97);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+            margin-bottom: 20px;
+        }
+        .history-card h3 {
+            font-size: 14px;
+            color: #1a3a6b;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: #f7f9ff;
+            margin-bottom: 10px;
+            border-left: 4px solid #2980b9;
+            transition: transform 0.2s;
+            animation: slideIn 0.4s ease;
+        }
+        .history-item:hover { transform: translateX(4px); }
+        @keyframes slideIn {
+            from { transform: translateX(-15px); opacity: 0; }
+            to   { transform: translateX(0);     opacity: 1; }
+        }
+        .history-item.red    { border-color: #e74c3c; }
+        .history-item.orange { border-color: #f39c12; }
+        .history-item.green  { border-color: #27ae60; }
+        .history-route {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a3a6b;
+        }
+        .history-airline {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 3px;
+        }
+        .history-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .history-badge.red    { background: #fdf2f2; color: #e74c3c; }
+        .history-badge.orange { background: #fef9f0; color: #f39c12; }
+        .history-badge.green  { background: #f0fdf4; color: #27ae60; }
+        .empty-history {
+            text-align: center;
+            color: #94a3b8;
+            padding: 30px;
+            font-size: 14px;
+        }
+        .logout-btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #922b21, #e74c3c);
+            color: white;
+            border-radius: 14px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+            transition: all 0.3s;
+            box-shadow: 0 6px 20px rgba(231,76,60,0.35);
+        }
+        .logout-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(231,76,60,0.5);
+        }
+    </style>
+</head>
+<body>
+
+<div class="animated-bg"></div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+
+<div class="navbar">
+    <div class="navbar-brand">
+        <span>✈</span>
+        <h1>Flight Delay Predictor</h1>
+    </div>
+    <span class="navbar-tag">97% Accurate AI</span>
+</div>
+
+<div class="profile-wrapper">
+
+    <!-- Profile Hero -->
+    <div class="profile-hero">
+        <div class="avatar">{{ user.name[0].upper() }}</div>
+        <div class="profile-info">
+            <h2>{{ user.name }}</h2>
+            <p>📧 {{ user.email }}</p>
+            <p>📅 Member since {{ user.joined }}</p>
+            <span class="profile-badge">✈ Flight Tracker</span>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">🔍</div>
+            <h3>{{ history | length }}</h3>
+            <p>Flights Searched</p>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔴</div>
+            <h3>{{ history | selectattr('color','eq','red') | list | length }}</h3>
+            <p>High Risk Found</p>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <h3>{{ history | selectattr('color','eq','green') | list | length }}</h3>
+            <p>Low Risk Found</p>
+        </div>
+    </div>
+
+    <!-- Search History -->
+    <div class="history-card">
+        <h3>📋 Recent Search History</h3>
+
+        {% if history %}
+            {% for item in history %}
+            <div class="history-item {{ item.color }}">
+                <div>
+                    <div class="history-route">✈ {{ item.origin }} → {{ item.dest }}</div>
+                    <div class="history-airline">{{ item.airline }} · {{ item.date }}</div>
+                </div>
+                <div>
+                    <span class="history-badge {{ item.color }}">
+                        {% if item.color == 'red' %}🔴 HIGH RISK
+                        {% elif item.color == 'orange' %}🟡 MEDIUM RISK
+                        {% else %}✅ LOW RISK{% endif %}
+                        · {{ item.probability }}%
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-history">
+                ✈ No searches yet. <a href="/" style="color:#2980b9;">Search your first flight!</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex; gap:14px; justify-content:center; margin-bottom:30px;">
+        <a href="/" class="back-btn">✈ Search a Flight</a>
+        <a href="/logout" class="logout-btn">🚪 Sign Out</a>
+    </div>
+
+</div>
+
+<footer>
+    <p>Flight Delay Analysis Project | Data Source: US Bureau of Transportation Statistics</p>
+</footer>
+
+</body>
+</html>

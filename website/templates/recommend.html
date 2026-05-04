@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Recommendations</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .rec-hero {
+            text-align: center;
+            padding: 40px 20px 20px;
+        }
+        .rec-hero h2 {
+            font-size: 2rem;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+        }
+        .rec-hero p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        .rec-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .rec-card {
+            background: #1e293b;
+            border: 1.5px solid #334155;
+            border-radius: 16px;
+            padding: 24px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: slideUp 0.5s forwards;
+        }
+        .rec-card:nth-child(1) { animation-delay: 0.1s; }
+        .rec-card:nth-child(2) { animation-delay: 0.25s; }
+        .rec-card:nth-child(3) { animation-delay: 0.4s; }
+        .rec-card:nth-child(4) { animation-delay: 0.55s; }
+        .rec-card:nth-child(5) { animation-delay: 0.7s; }
+        .rec-card:nth-child(6) { animation-delay: 0.85s; }
+        .rec-card:nth-child(7) { animation-delay: 1.0s; }
+
+        @keyframes slideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .rec-card-left h3 {
+            color: #e2e8f0;
+            font-size: 1.3rem;
+            margin-bottom: 6px;
+        }
+        .rec-card-left p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+        .rec-card-right {
+            text-align: right;
+        }
+        .rec-prob {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #27ae60;
+        }
+        .rec-prob.medium { color: #f39c12; }
+        .rec-prob.high   { color: #e74c3c; }
+
+        .rec-delay {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+        .rec-badge {
+            display: inline-block;
+            background: #166534;
+            color: #86efac;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-top: 8px;
+        }
+        .rec-badge.medium {
+            background: #78350f;
+            color: #fcd34d;
+        }
+        .rec-badge.high {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+        .rank-num {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #3b82f6;
+            margin-right: 20px;
+            min-width: 36px;
+        }
+        .rec-card-inner {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        .rec-divider {
+            text-align: center;
+            color: #475569;
+            font-size: 0.85rem;
+            margin: 10px 20px;
+            border-top: 1px solid #334155;
+            padding-top: 10px;
+        }
+        .recommend-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: #fff;
+            padding: 14px 36px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        .recommend-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59,130,246,0.4);
+        }
+    </style>
+</head>
+<body>
+
+<div class="animated-bg"></div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+
+<div class="navbar">
+    <div class="navbar-brand">
+        <span>✈</span>
+        <h1>Flight Delay Predictor</h1>
+    </div>
+    <!-- <span class="navbar-tag">{{ accuracy }}% Accurate AI</span> -->
+</div>
+
+<div class="container">
+
+    <div class="rec-hero">
+        <h2>✈ Better Flight Options</h2>
+        <p>
+            Showing lowest delay risk airlines for
+            <strong style="color:#3b82f6;">{{ origin }} → {{ dest }}</strong>
+        </p>
+
+        {% if current_prob >= 70 %}
+        <p style="color:#e74c3c; font-size:0.95rem; margin-top:8px;">
+            ⚠ Your selected flight has <strong>HIGH delay risk ({{ current_prob }}%)</strong>.
+            Showing all Low &amp; Medium risk alternatives below.
+        </p>
+        {% elif current_prob >= 40 %}
+        <p style="color:#f39c12; font-size:0.95rem; margin-top:8px;">
+            ⚠ Your selected flight has <strong>MEDIUM delay risk ({{ current_prob }}%)</strong>.
+            Showing better Low risk alternatives below.
+        </p>
+        {% else %}
+        <p style="color:#27ae60; font-size:0.95rem; margin-top:8px;">
+            ✅ Your flight already has <strong>LOW risk ({{ current_prob }}%)</strong>.
+            Here are all alternatives sorted by delay probability for comparison.
+        </p>
+        {% endif %}
+
+        <p style="color:#64748b; font-size:0.9rem; margin-top:6px;">
+            Sorted by lowest delay probability · Same route · Same date
+        </p>
+    </div>
+
+    <div class="rec-cards">
+        {% for r in recommendations %}
+        <div class="rec-card">
+            <div class="rec-card-inner">
+                <div class="rank-num">#{{ loop.index }}</div>
+                <div class="rec-card-left">
+                    <h3>{{ r.airline }}</h3>
+                    <p>✈ {{ origin }} → {{ dest }}</p>
+
+                    {% if r.prob < 40 %}
+                    <span class="rec-badge">✅ Low Risk</span>
+                    {% elif r.prob < 70 %}
+                    <span class="rec-badge medium">⚠ Medium Risk</span>
+                    {% else %}
+                    <span class="rec-badge high">🔴 High Risk</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="rec-card-right">
+                <div class="rec-prob
+                    {% if r.prob >= 70 %}high
+                    {% elif r.prob >= 40 %}medium
+                    {% endif %}">
+                    {{ r.prob }}%
+                </div>
+                <div class="rec-delay">Delay Risk</div>
+
+                {% if r.avg_delay == 0 %}
+                <div class="rec-delay" style="color:#27ae60; margin-top:4px;">
+                    ✅ No avg delay
+                </div>
+                {% else %}
+                <div class="rec-delay" style="margin-top:4px;">
+                    Avg delay:
+                    {% if r.hours > 0 %}{{ r.hours }}h {% endif %}
+                    {{ r.mins }}m
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="text-align:center; margin: 10px 0 30px;">
+        <a href="/" class="back-btn">← Search Another Flight</a>
+    </div>
+
+</div>
+
+<footer>
+    <p>Flight Delay Analysis Project | Data Source: US Bureau of Transportation Statistics</p>
+</footer>
+
+</body>
+</html>

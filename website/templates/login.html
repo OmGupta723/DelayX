@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login – Flight Delay Predictor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .login-card {
+            background: rgba(255,255,255,0.97);
+            border-radius: 24px;
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.3);
+            animation: popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+        }
+        @keyframes popIn {
+            from { transform: scale(0.88); opacity: 0; }
+            to   { transform: scale(1);    opacity: 1; }
+        }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .login-logo .icon-circle {
+            width: 60px; height: 60px;
+            background: linear-gradient(135deg, #1a3a6b, #2980b9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            margin: 0 auto 12px;
+            box-shadow: 0 6px 20px rgba(41,128,185,0.4);
+        }
+        .login-logo h2 {
+            font-size: 22px;
+            font-weight: 800;
+            color: #1a3a6b;
+        }
+        .login-logo p {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .login-tabs {
+            display: flex;
+            background: #f0f4ff;
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+        .login-tab {
+            flex: 1;
+            text-align: center;
+            padding: 9px;
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            color: #94a3b8;
+            transition: all 0.25s;
+            user-select: none;
+        }
+        .login-tab.active {
+            background: linear-gradient(135deg, #1a3a6b, #2980b9);
+            color: white;
+            box-shadow: 0 4px 12px rgba(41,128,185,0.35);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .field-group {
+            margin-bottom: 16px;
+        }
+        .field-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #1a3a6b;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 6px;
+        }
+        .field-group input {
+            width: 100%;
+            padding: 13px 16px;
+            border: 2px solid #e8f0fe;
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            background: #f7f9ff;
+            color: #222;
+            transition: all 0.25s;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .field-group input:focus {
+            border-color: #2980b9;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(41,128,185,0.12);
+            transform: translateY(-1px);
+        }
+        .field-icon-wrap {
+            position: relative;
+        }
+        .field-icon-wrap input {
+            padding-left: 42px;
+        }
+        .field-icon-wrap .f-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #1a3a6b 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+            box-shadow: 0 6px 20px rgba(41,128,185,0.4);
+            font-family: 'Segoe UI', sans-serif;
+            margin-top: 6px;
+        }
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(41,128,185,0.5);
+        }
+        .divider {
+            text-align: center;
+            color: #ccc;
+            font-size: 12px;
+            margin: 16px 0;
+            position: relative;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 42%;
+            height: 1px;
+            background: #e8f0fe;
+        }
+        .divider::before { left: 0; }
+        .divider::after  { right: 0; }
+        .guest-btn {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            color: #2980b9;
+            border: 2px solid #2980b9;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Segoe UI', sans-serif;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+        .guest-btn:hover {
+            background: #2980b9;
+            color: white;
+            transform: translateY(-2px);
+        }
+        .flash-msg {
+            background: #fdf2f2;
+            border-left: 4px solid #e74c3c;
+            color: #922b21;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        .flash-msg.success {
+            background: #f0fdf4;
+            border-color: #27ae60;
+            color: #1a5276;
+        }
+    </style>
+</head>
+<body>
+
+<div class="animated-bg"></div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+<div class="plane">✈</div>
+
+<div class="navbar">
+    <div class="navbar-brand">
+        <span>✈</span>
+        <h1>Flight Delay Predictor</h1>
+    </div>
+    <span class="navbar-tag">97% Accurate AI</span>
+</div>
+
+<div class="login-wrapper">
+    <div class="login-card">
+
+        <div class="login-logo">
+            <div class="icon-circle">✈</div>
+            <h2>Welcome Back</h2>
+            <p>Sign in to track your flight predictions</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash-msg {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Tabs -->
+        <div class="login-tabs">
+            <div class="login-tab active" onclick="switchTab('login')">Sign In</div>
+            <div class="login-tab" onclick="switchTab('register')">Register</div>
+        </div>
+
+        <!-- Login Tab -->
+        <div class="tab-content active" id="tab-login">
+            <form action="/login" method="POST">
+                <input type="hidden" name="form_type" value="login">
+                <div class="field-group">
+                    <label>Email Address</label>
+                    <div class="field-icon-wrap">
+                        <span class="f-icon">📧</span>
+                        <input type="email" name="email" placeholder="you@example.com" required>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Password</label>
+                    <div class="field-icon-wrap">
+                        <span class="f-icon">🔒</span>
+                        <input type="password" name="password" placeholder="Enter your password" required>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn">✈ Sign In</button>
+            </form>
+            <div class="divider">or</div>
+            <a href="/" class="guest-btn">Continue as Guest</a>
+        </div>
+
+        <!-- Register Tab -->
+        <div class="tab-content" id="tab-register">
+            <form action="/register" method="POST">
+                <input type="hidden" name="form_type" value="register">
+                <div class="field-group">
+                    <label>Full Name</label>
+                    <div class="field-icon-wrap">
+                        <span class="f-icon">👤</span>
+                        <input type="text" name="name" placeholder="Your full name" required>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Email Address</label>
+                    <div class="field-icon-wrap">
+                        <span class="f-icon">📧</span>
+                        <input type="email" name="email" placeholder="you@example.com" required>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Password</label>
+                    <div class="field-icon-wrap">
+                        <span class="f-icon">🔒</span>
+                        <input type="password" name="password" placeholder="Create a password" required>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn">🚀 Create Account</button>
+            </form>
+            <div class="divider">or</div>
+            <a href="/" class="guest-btn">Continue as Guest</a>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function switchTab(tab) {
+    document.querySelectorAll('.login-tab').forEach((t,i) => {
+        t.classList.toggle('active', (i===0 && tab==='login') || (i===1 && tab==='register'));
+    });
+    document.getElementById('tab-login').classList.toggle('active', tab==='login');
+    document.getElementById('tab-register').classList.toggle('active', tab==='register');
+}
+</script>
+
+</body>
+</html>
